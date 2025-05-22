@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/expense.dart';
 import '../widgets/expense_list.dart';
 import '../widgets/add_expense.dart';
@@ -27,13 +29,34 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _updateTotals();
+    _loadExpenses();
+  }
+
+  Future<void> _loadExpenses() async {
+    final prefs = await SharedPreferences.getInstance();
+    final expensesJson = prefs.getStringList('expenses') ?? [];
+    
+    setState(() {
+      _expenses.clear();
+      for (var expenseJson in expensesJson) {
+        final expenseMap = json.decode(expenseJson);
+        _expenses.add(Expense.fromJson(expenseMap));
+      }
+      _updateTotals();
+    });
+  }
+
+  Future<void> _saveExpenses() async {
+    final prefs = await SharedPreferences.getInstance();
+    final expensesJson = _expenses.map((expense) => json.encode(expense.toJson())).toList();
+    await prefs.setStringList('expenses', expensesJson);
   }
 
   void _addExpense(Expense expense) {
     setState(() {
       _expenses.add(expense);
       _updateTotals();
+      _saveExpenses();
     });
   }
 
@@ -41,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _expenses.removeWhere((expense) => expense.id == id);
       _updateTotals();
+      _saveExpenses();
     });
   }
 
